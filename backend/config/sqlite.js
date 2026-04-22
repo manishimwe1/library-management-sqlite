@@ -4,10 +4,10 @@ import { fileURLToPath } from "url";
 
 const fileName = fileURLToPath(import.meta.url);
 const dirName = path.dirname(fileName);
-console.log({
-  fileName,
-  dirName,
-});
+// console.log({
+//   fileName,
+//   dirName,
+// });
 
 const dbPath = path.join(dirName, "database.db");
 
