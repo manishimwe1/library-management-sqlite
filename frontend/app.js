@@ -2,55 +2,6 @@
 const bookContainer = document.getElementById('book-container');
 const navLink = document.getElementById('navLink');
 
-
-const books = [
-    {
-        id: 1,
-        name:'Javascript for beginners',
-        description:'Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas, voluptate.',
-        author:'John Doe',
-        price: 20,
-        slug:'javascript-for-beginners',
-         image:'https://m.media-amazon.com/images/I/51Zymoq7UnL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg'
-    },
-    {
-        id: 2,
-        name:'Html for beginners',
-        description:'Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas, voluptate.',
-        author:'manzi Doe',
-        price: 40,
-        slug:'html-for-beginners',
-        image:'https://m.media-amazon.com/images/I/51Zymoq7UnL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg'
-    },
-    {
-        id: 3,
-        name:'React for beginners',
-        description:'Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas, voluptate.',
-        author:'John Man',
-        price: 20,
-        slug:'react-for-beginners',
-        image:'https://m.media-amazon.com/images/I/51Zymoq7UnL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg'
-    },
-    {
-        id: 4,
-        name:'css for beginners',
-        description:'Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas, voluptate.',
-        author:'John Doe',
-        price: 20,
-        slug:'css-for-beginners',
-        image:'https://m.media-amazon.com/images/I/51Zymoq7UnL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg'
-    },
-    {
-        id: 5,
-        name:'Job for beginners',
-        description:'Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptas, voluptate.',
-        author:'John Doe',
-        price: 20,
-        slug:'job-for-beginners',
-        image:'https://m.media-amazon.com/images/I/51Zymoq7UnL._SX218_BO1,204,203,200_QL40_FMwebp_.jpg'
-    },
-]
-
 const navLinks = [
     {
         label:'Home',
@@ -61,13 +12,13 @@ const navLinks = [
     {
         label:'Dashboard',
         active: false,
-        link:'/dashboard/dashboard.html'
+        link:'/frontend/dashboard/dashboard.html'
 
     },
     {
         label:'Books',
         active: false,
-        link:'/books'
+        link:'/frontend/books'
 
     },
     {
@@ -79,8 +30,9 @@ const navLinks = [
 ]
 
 
-function displayBooks(){
-
+async function displayBooks(){
+    const response = await fetch('http://localhost:3000/api/books');
+    const books = await response.json();
     books.map((book)=>{
         
         const bookElement = document.createElement('div');
@@ -93,7 +45,7 @@ function displayBooks(){
         const bookPrice = document.createElement('p');
         const bookSpan = document.createElement('span')
         
-        bookImage.src = book.image;
+        bookImage.src = book.imageSrc;
         bookName.textContent = book.name;
         bookAuthor.textContent = `Author: ${book.author}`;
         bookDescription.textContent = book.description;
