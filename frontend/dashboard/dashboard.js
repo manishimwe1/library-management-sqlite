@@ -3,181 +3,237 @@ const addBookBtn = document.getElementById("add-book-btn");
 const closeBtn = document.getElementById("close-modal");
 const submitForm = document.getElementById("submit-form");
 const saveBookBtn = document.getElementById("add-book");
-const tableBody = document.getElementById("tableBody");
-const emptyState = document.getElementById("emptyState");
-const booksTable = document.getElementById("booksTable");
+const bookTable = document.getElementById("book-table");
+const tableBody = document.getElementById("table-body");
+
+const nameInput = document.getElementById("name");
+const descInput = document.getElementById("description");
+const authorInput = document.getElementById("author");
+const priceInput = document.getElementById("price");
+const image = document.getElementById("image");
 
 const API_BASE = "http://localhost:3000/api";
+let currentBookId = null;
+let currentImageSrc = null;
 
-// Fetch and display all books
-async function loadBooks() {
-  try {
-    const response = await fetch(`${API_BASE}/books`);
-    if (!response.ok) throw new Error("Failed to fetch books");
-    
-    const books = await response.json();
-    displayBooks(books);
-  } catch (error) {
-    console.error("Error loading books:", error);
-    showEmptyState();
-  }
-}
-
-// Display books in table
-function displayBooks(books) {
-  tableBody.innerHTML = "";
-  
-  if (books.length === 0) {
-    showEmptyState();
-    return;
-  }
-  
-  hideEmptyState();
-  
-  books.forEach((book,index) => {
-    const row = createTableRow(book,index);
-    tableBody.appendChild(row);
+// Function to read file as data URL
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
   });
 }
 
-// Create table row element
-function createTableRow(book,index) {
-  const row = document.createElement("tr");
-  
-  const imageHtml = book.imageSrc 
-    ? `<img src="${book.imageSrc}" alt="${book.name}" class="table-image" />` 
-    : "<span style='color: #999;'>No image</span>";
-  
-  row.innerHTML = `
-    <td ><strong>${index + 1}</strong></td>
-    <td class="truncate"><strong>${book.name}</strong></td>
-    <td class="truncate">${book.author}</td>
-    <td class="truncate">${book.description}</td>
-    <td><strong>$${parseFloat(book.price).toFixed(2)}</strong></td>
-    <td>${imageHtml}</td>
-    <td>
-      <div class="actions-cell">
-        <button class="btn-action btn-view" onclick="viewBook(${book.id})">View</button>
-        <button class="btn-action btn-edit" onclick="editBook(${book.id})">Edit</button>
-        <button class="btn-action btn-delete" onclick="deleteBook(${book.id})">Delete</button>
-      </div>
-    </td>
-  `;
-  
-  return row;
-}
 
-// Show empty state
+//empty state
+const emptyState = document.getElementById("empty-state");
 function showEmptyState() {
-  emptyState.classList.add("show");
-  booksTable.style.display = "none";
+  emptyState.style.display = "block";
+  bookTable.style.display = "none";
 }
-
-// Hide empty state
+// hide empty state
 function hideEmptyState() {
-  emptyState.classList.remove("show");
-  booksTable.style.display = "table";
+  emptyState.style.display = "none";
+  bookTable.style.display = "table";
 }
 
-// View book details
-function viewBook(bookId) {
-  alert(`View book ${bookId}`);
-  // TODO: Implement view modal
-}
-
-// Edit book
-function editBook(bookId) {
-  alert(`Edit book ${bookId}`);
-  // TODO: Implement edit functionality
-}
-
-// Delete book
-async function deleteBook(bookId) {
-  if (!confirm("Are you sure you want to delete this book?")) {
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${API_BASE}/books/${bookId}`, {
-      method: "DELETE",
-    });
-    
-    if (response.ok) {
-      alert("Book deleted successfully");
-      loadBooks(); // Reload table
-    } else {
-      alert("Failed to delete book");
-    }
-  } catch (error) {
-    console.error("Error deleting book:", error);
-    alert("Error deleting book");
-  }
-}
+//edit book function
 
 // Submit books
 async function handleBookSubmit(e) {
   e.preventDefault();
-  const nameInput = document.getElementById("name").value;
-  const descInput = document.getElementById("description").value;
-  const authorInput = document.getElementById("author").value;
-  const priceInput = document.getElementById("price").value;
-  const image = document.getElementById("image").value;
+  submitForm.disabled = true;
 
-  if (!nameInput || !descInput || !authorInput || !priceInput) {
+  const name = nameInput.value;
+  const desc = descInput.value;
+  const author = authorInput.value;
+  const price = priceInput.value;
+  const file = image.files[0];
+
+  if (!name || !desc || !author || !price) {
     alert("Please fill in all fields");
+    submitForm.disabled = false;
     return;
   }
 
+  let imageSrc;
+  if (file) {
+    try {
+      imageSrc = await readFileAsDataURL(file);
+    } catch (error) {
+      alert("Error reading image file");
+      submitForm.disabled = false;
+      return;
+    }
+  } else if (currentBookId) {
+    // for update, if no new file, use existing
+    imageSrc = currentImageSrc;
+  } else {
+    alert("Please select an image");
+    submitForm.disabled = false;
+    return;
+  }
+
+  const bookData = {
+    name,
+    description: desc,
+    author,
+    price,
+    imageSrc
+  };
+
   try {
-    const response = await fetch(`${API_BASE}/books`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: nameInput,
-        description: descInput,
-        author: authorInput,
-        price: priceInput,
-        imageSrc: image,
-      }),
-      method: "POST",
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log(data);
-      alert("Book added successfully");
-      
-      // Clear form
-      submitForm.reset();
-      
-      // Close modal
-      modal.style.display = "none";
-      
-      // Reload books table
-      loadBooks();
+    const isUpdate = Boolean(currentBookId);
+    let response;
+    if (isUpdate) {
+      response = await fetch(`${API_BASE}/books/${currentBookId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookData),
+      });
     } else {
-      alert("Error adding book");
+      response = await fetch(`${API_BASE}/books`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookData),
+      });
+    }
+
+    if (response.ok) {
+      modal.style.display = "none";
+      submitForm.reset();
+      currentBookId = null;
+      currentImageSrc = null;
+      loadBooks();
+      alert(isUpdate ? "Book updated successfully" : "Book added successfully");
+    } else {
+      alert("Error saving book");
     }
   } catch (error) {
-    console.error("Error:", error);
-    alert("Error adding book");
+    console.log(error);
+    alert("Something went wrong");
+  } finally {
+    submitForm.disabled = false;
   }
 }
 
+// load books
+const loadBooks = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/books`);
+    if (!response.ok) {
+      console.log("error in getting data");
+      return;
+    }
+
+    const books = await response.json();
+    displayBooks(books);
+  } catch (error) {
+    console.log(error);
+    showEmptyState();
+  }
+};
+
+const displayBooks = (books) => {
+  tableBody.innerHTML = "";
+
+  if (!books || books.length === 0) {
+    showEmptyState();
+    return;
+  }
+
+  hideEmptyState();
+  books.forEach((book, index) => {
+    const row = createHtmlRow(book, index);
+    tableBody.appendChild(row);
+  });
+};
+
+const createHtmlRow = (book, index) => {
+  const row = document.createElement("tr");
+  row.innerHTML = `
+    <td><strong>${index + 1}</strong></td>
+    <td><strong>${book.name}</strong></td>
+    <td class='truncate'>${book.author}</td>
+    <td class='truncate'>${book.description}</td>
+    <td class='truncate'>
+      <img class='table-image' src="${book.imageSrc || ''}" alt="${book.name || 'Book image'}" />
+    </td>
+    <td class='truncate'>${book.price}</td>
+    <td>
+      <div class='action-cell'>
+        <button class='btn-action'>View</button>
+        <button class='btn-action' onclick='editBook(${book.id})'>Edit</button>
+        <button class='btn-action ' onclick='deleteBook(${book.id})'>Delete</button>
+      </div>
+    </td>
+  `;
+
+  return row;
+};
+
 // Display modal
-addBookBtn.addEventListener("click", () => {
+addBookBtn.addEventListener("click", (e) => {
+  e.preventDefault();
   modal.style.display = "flex";
+  currentBookId = null;
+  currentImageSrc = null;
 });
 
 // Close modal
 closeBtn.addEventListener("click", () => {
   modal.style.display = "none";
   submitForm.reset();
+  currentBookId = null;
+  currentImageSrc = null;
 });
 
 // Handle form submission
-saveBookBtn.addEventListener("click", handleBookSubmit);
+submitForm.addEventListener("submit", handleBookSubmit);
 
-// Load books on page load
 document.addEventListener("DOMContentLoaded", loadBooks);
+
+// delete book
+async function deleteBook(id) {
+  if (!id) {
+    return console.log("missing bookId");
+  }
+  try {
+    const response = await fetch(`${API_BASE}/books/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      console.log("error in deleting book");
+    } else {
+      alert("book deleted successfully");
+      loadBooks();
+    }
+  } catch (error) {
+    console.log(error);
+    alert("something went wrong in deleting book");
+  }
+}
+//edit book function
+
+async function editBook(id) {
+  try {
+    const response = await fetch(`${API_BASE}/books/${id}`);
+    if (response.ok) {
+      const book = await response.json();
+      nameInput.value = book.name;
+      descInput.value = book.description;
+      authorInput.value = book.author;
+      priceInput.value = book.price;
+      // can't set file input, so leave it, and use currentImageSrc
+      currentImageSrc = book.imageSrc;
+      currentBookId = id;
+      modal.style.display = "flex";
+    } else {
+      alert("Error loading book");
+    }
+  } catch (error) {
+    console.log(error);
+  }
+}
